@@ -51,6 +51,7 @@ import logging
 import datetime
 import http.cookiejar
 import uuid
+import requests
 import xml.etree.ElementTree as ET
 import urllib.request as urllib_request
 import socket
@@ -288,7 +289,8 @@ class OFXClient:
 
         if persist_cookies:
             cj = http.cookiejar.CookieJar()
-            opener = urllib_request.build_opener(urllib_request.HTTPCookieProcessor(cj))
+            opener = urllib_request.build_opener(
+                urllib_request.HTTPCookieProcessor(cj))
             self.url_opener = opener.open
 
     @classproperty
@@ -443,13 +445,15 @@ class OFXClient:
             stmtendrqCls: Union[Type[StmtEndRq], Type[CcStmtEndRq]],
         ):
             try:
-                index = [type(msgset) for msgset in msgsetlist].index(msgsetCls)
+                index = [type(msgset)
+                         for msgset in msgsetlist].index(msgsetCls)
             except ValueError:
                 pass
             else:
                 msgset = msgsetlist[index]
                 if msgset.closingavail:  # proxy access to SubAggregate attributes
-                    urls[stmtendrqCls] = msgset.url  # proxy access to SubAgg attributes
+                    # proxy access to SubAgg attributes
+                    urls[stmtendrqCls] = msgset.url
 
         map_stmtendrq_urls(BANKMSGSET, StmtEndRq)
         map_stmtendrq_urls(CREDITCARDMSGSET, CcStmtEndRq)
@@ -843,25 +847,27 @@ class OFXClient:
         if url is None:
             url = self.url
 
-        req = urllib_request.Request(
-            url, method="POST", data=request, headers=self.http_headers
-        )
+        # req = urllib_request.Request(
+        #    url, method="POST", data=request, headers=self.http_headers
+        # )
 
-        if timeout in (None, False):
-            #  timeout = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore
-            timeout = 10.0
+        # if timeout in (None, False):
+        #    #  timeout = socket._GLOBAL_DEFAULT_TIMEOUT  # type: ignore
+        #    timeout = 10.0
 
-        kwargs = dict(timeout=timeout)
+        #kwargs = dict(timeout=timeout)
 
-        url_opener = self.url_opener
-        if url_opener is None:
-            # NB: we resolve the default url opener here instead
-            #     instead of in __init__ because the tests
-            #     mock urlopen after instantiating the OFXClient object
-            url_opener = urllib_request.urlopen
+        #url_opener = self.url_opener
+        # if url_opener is None:
+        #    # NB: we resolve the default url opener here instead
+        #    #     instead of in __init__ because the tests
+        #    #     mock urlopen after instantiating the OFXClient object
+        #    url_opener = urllib_request.urlopen
 
-        response = url_opener(req, **kwargs)
-        return BytesIO(response.read())
+        #response = url_opener(req, **kwargs)
+        # return BytesIO(response.read())
+        resp = requests.post(url, data=request, headers=self.http_headers)
+        return BytesIO(resp.content)
 
     def serialize(
         self,
@@ -932,7 +938,8 @@ def wrap_stmtrq(nt, rqs, client):
 def wrap_stmtrq_stmtrq(nt, rqs, client):
     return (
         BANKMSGSRQV1,
-        [client.stmttrnrq(**dict(rq._asdict(), bankid=client.bankid)) for rq in rqs],
+        [client.stmttrnrq(**dict(rq._asdict(), bankid=client.bankid))
+         for rq in rqs],
     )
 
 
@@ -956,7 +963,8 @@ def wrap_stmtrq_invstmtrq(nt, rqs, client):
 def wrap_stmtrq_stmtendrq(nt, rqs, client):
     return (
         BANKMSGSRQV1,
-        [client.stmtendtrnrq(**dict(rq._asdict(), bankid=client.bankid)) for rq in rqs],
+        [client.stmtendtrnrq(**dict(rq._asdict(), bankid=client.bankid))
+         for rq in rqs],
     )
 
 
